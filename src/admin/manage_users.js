@@ -1,36 +1,37 @@
-let students = [];
+let users = [];
 
-const studentTableBody = document.querySelector("#student-table tbody");
-const addStudentForm = document.querySelector("#add-student-form");
-const changePasswordForm = document.querySelector("#password-form");
+const userTableBody = document.querySelector("#user-table-body");
+const addUserForm = document.querySelector("#add-user-form");
+const passwordForm = document.querySelector("#password-form");
 const searchInput = document.querySelector("#search-input");
-const tableHeaders = document.querySelectorAll("#student-table thead th");
+const tableHeaders = document.querySelectorAll("#user-table thead th");
 
-function createStudentRow(student) {
+function createUserRow(user) {
     const tr = document.createElement("tr");
 
     const nameTd = document.createElement("td");
-    nameTd.textContent = student.name;
+    nameTd.textContent = user.name;
     tr.appendChild(nameTd);
 
-    const idTd = document.createElement("td");
-    idTd.textContent = student.id;
-    tr.appendChild(idTd);
-
     const emailTd = document.createElement("td");
-    emailTd.textContent = student.email;
+    emailTd.textContent = user.email;
     tr.appendChild(emailTd);
 
+    const adminTd = document.createElement("td");
+    adminTd.textContent = user.is_admin == 1 ? "Yes" : "No";
+    tr.appendChild(adminTd);
+
     const actionsTd = document.createElement("td");
+    
     const editBtn = document.createElement("button");
     editBtn.textContent = "Edit";
     editBtn.classList.add("edit-btn");
-    editBtn.dataset.id = student.id;
+    editBtn.dataset.id = user.id;
 
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "Delete";
     deleteBtn.classList.add("delete-btn");
-    deleteBtn.dataset.id = student.id;
+    deleteBtn.dataset.id = user.id;
 
     actionsTd.appendChild(editBtn);
     actionsTd.appendChild(deleteBtn);
@@ -39,122 +40,134 @@ function createStudentRow(student) {
     return tr;
 }
 
-function renderTable(studentArray) {
-    studentTableBody.innerHTML = "";
-    studentArray.forEach(student => {
-        studentTableBody.appendChild(createStudentRow(student));
+function renderTable(userArray) {
+    userTableBody.innerHTML = "";
+    userArray.forEach(user => {
+        userTableBody.appendChild(createUserRow(user));
     });
 }
 
 function handleChangePassword(event) {
     event.preventDefault();
-    const messageBox = document.querySelector("#message-container");
-    const currentPassword = document.querySelector("#current-password").value;
-    const newPassword = document.querySelector("#new-password").value;
-    const confirmPassword = document.querySelector("#confirm-password").value;
 
-    messageBox.textContent = "";
-    messageBox.style.color = "white";
-    messageBox.style.padding = "10px";
+    const currentPw = document.getElementById("current-password");
+    const newPw = document.getElementById("new-password");
+    const confirmPw = document.getElementById("confirm-password");
 
-    if (newPassword !== confirmPassword) {
-        messageBox.textContent = "Error: Passwords do not match.";
-        messageBox.style.backgroundColor = "#ef4444"; 
+    if (newPw.value !== confirmPw.value) {
+        alert("Error: Passwords do not match.");
         return;
     }
 
-    if (newPassword.length < 8) {
-        messageBox.textContent = "Error: Password must be at least 8 characters.";
-        messageBox.style.backgroundColor = "#ef4444"; 
+    if (newPw.value.length < 8) {
+        alert("Error: Password must be at least 8 characters.");
         return;
     }
 
-    messageBox.textContent = "Success: Password updated successfully!";
-    messageBox.style.backgroundColor = "#22c55e"; 
-
-    document.querySelector("#current-password").value = "";
-    document.querySelector("#new-password").value = "";
-    document.querySelector("#confirm-password").value = "";
+    currentPw.value = "";
+    newPw.value = "";
+    confirmPw.value = "";
 }
 
-function handleAddStudent(event) {
+async function handleAddUser(event) {
     event.preventDefault();
-    const name = document.querySelector("#student-name").value.trim();
-    const id = document.querySelector("#student-id").value.trim();
-    const email = document.querySelector("#student-email").value.trim();
-    const defaultPassword = document.querySelector("#default-password").value.trim();
 
-    if (!name || !id || !email) {
-        alert("Please fill out all required fields.");
+    const name = document.getElementById("user-name").value.trim();
+    const email = document.getElementById("user-email").value.trim();
+    const password = document.getElementById("default-password").value.trim();
+    const isAdmin = document.getElementById("is-admin").value;
+
+    if (!name || !email || !password) {
+        alert("Error: Please fill out all required fields.");
         return;
     }
 
-    if (students.some(s => s.id === id)) {
-        alert("A student with this ID already exists.");
-        return;
+    try {
+        const response = await fetch("api/index.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password, is_admin: isAdmin })
+        });
+        
+        if (response.ok) {
+            await loadUsersAndInitialize();
+            document.getElementById("user-name").value = "";
+            document.getElementById("user-email").value = "";
+            document.getElementById("default-password").value = "";
+        }
+    } catch (err) {
+        console.error(err);
     }
-
-    students.push({ name, id, email });
-    renderTable(students);
-
-    document.querySelector("#student-name").value = "";
-    document.querySelector("#student-id").value = "";
-    document.querySelector("#student-email").value = "";
-    document.querySelector("#default-password").value = "";
 }
 
-function handleTableClick(event) {
+async function handleTableClick(event) {
     if (event.target.classList.contains("delete-btn")) {
-        const studentId = event.target.dataset.id;
-        students = students.filter(s => s.id !== studentId);
-        renderTable(students);
+        const userId = event.target.dataset.id;
+        
+        if (confirm("Are you sure?")) {
+            const response = await fetch(`api/index.php?id=${userId}`, {
+                method: "DELETE"
+            });
+            if (response.ok) {
+                users = users.filter(u => u.id != userId);
+                renderTable(users);
+            }
+        }
     }
 }
 
-function handleSearch(event) {
+function handleSearch() {
     const term = searchInput.value.toLowerCase();
-    if (!term) {
-        renderTable(students);
-        return;
-    }
-    const filtered = students.filter(s => s.name.toLowerCase().includes(term));
+    const filtered = users.filter(u => 
+        u.name.toLowerCase().includes(term) || 
+        u.email.toLowerCase().includes(term)
+    );
     renderTable(filtered);
 }
 
 function handleSort(event) {
-    const index = event.currentTarget.cellIndex;
-    let prop;
-    if (index === 0) prop = "name";
-    else if (index === 1) prop = "id";
-    else if (index === 2) prop = "email";
-    else return;
+    const header = event.currentTarget;
+    const index = header.cellIndex;
+    let prop = index === 0 ? "name" : (index === 1 ? "email" : null);
+    
+    if (!prop) return;
 
-    const dir = event.currentTarget.dataset.sortDir === "asc" ? "desc" : "asc";
-    event.currentTarget.dataset.sortDir = dir;
+    const currentDir = header.dataset.sortDir || "desc";
+    const newDir = currentDir === "asc" ? "desc" : "asc";
+    header.dataset.sortDir = newDir;
 
-    students.sort((a, b) => {
-        if (prop === "id") return dir === "asc" ? a.id.localeCompare(b.id, undefined, { numeric: true }) : b.id.localeCompare(a.id, undefined, { numeric: true });
-        return dir === "asc" ? a[prop].localeCompare(b[prop]) : b[prop].localeCompare(a[prop]);
+    users.sort((a, b) => {
+        return newDir === "asc" 
+            ? a[prop].localeCompare(b[prop]) 
+            : b[prop].localeCompare(a[prop]);
     });
 
-    renderTable(students);
+    renderTable(users);
 }
 
-async function loadStudentsAndInitialize() {
+async function loadUsersAndInitialize() {
     try {
-        const response = await fetch("students.json");
-        if (!response.ok) throw new Error("Failed to fetch students.json");
-        students = await response.json();
-        renderTable(students);
+        const response = await fetch("api/index.php");
+        const result = await response.json();
+        
+        if (result.success) {
+            users = result.data;
+            renderTable(users);
+        }
 
-        changePasswordForm.addEventListener("submit", handleChangePassword);
-        addStudentForm.addEventListener("submit", handleAddStudent);
-        studentTableBody.addEventListener("click", handleTableClick);
-        searchInput.addEventListener("input", handleSearch);
-        tableHeaders.forEach(th => th.addEventListener("click", handleSort));
+        if (!loadUsersAndInitialize._listenersAttached) {
+            passwordForm.addEventListener("submit", handleChangePassword);
+            addUserForm.addEventListener("submit", handleAddUser);
+            userTableBody.addEventListener("click", handleTableClick);
+            searchInput.addEventListener("input", handleSearch);
+            tableHeaders.forEach(th => th.addEventListener("click", handleSort));
+            
+            loadUsersAndInitialize._listenersAttached = true;
+        }
     } catch (error) {
         console.error(error);
     }
 }
 
-loadStudentsAndInitialize();
+loadUsersAndInitialize._listenersAttached = false;
+loadUsersAndInitialize();
