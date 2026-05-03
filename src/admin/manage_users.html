@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal</title>
-    
     <script src="manage_users.js" defer></script>
     <link rel="stylesheet" href="../common/style.css">
 </head>
@@ -38,45 +37,48 @@
         </section>
 
         <section>
-            <h2>Manage Students</h2>
+            <h2>Manage Users</h2>
 
             <details>
-                <summary>Add New Student</summary>
-                <form id="add-student-form">
+                <summary>Add New User</summary>
+                <form id="add-user-form">
                     <fieldset>
-                        <legend>New Student Information</legend>
+                        <legend>New User Information</legend>
 
-                        <label for="student-name">Full Name</label>
-                        <input type="text" id="student-name" required>
+                        <label for="user-name">Full Name</label>
+                        <input type="text" id="user-name" required>
 
-                        <label for="student-id">Student ID</label>
-                        <input type="text" id="student-id" required>
-
-                        <label for="student-email">Email</label>
-                        <input type="email" id="student-email" required>
+                        <label for="user-email">Email</label>
+                        <input type="email" id="user-email" required>
 
                         <label for="default-password">Default Password</label>
-                        <input type="text" id="default-password">
+                        <input type="password" id="default-password" minlength="8" required>
 
-                        <button type="submit" id="add">Add Student</button>
+                        <label for="is-admin">Role</label>
+                        <select id="is-admin">
+                            <option value="0">Student</option>
+                            <option value="1">Admin</option>
+                        </select>
+
+                        <button type="submit" id="add">Add User</button>
                     </fieldset>
                 </form>
             </details>
 
-            <h3>Registered Students</h3>
-            <input type="text" id="search-input" placeholder="Search by name...">
+            <h3>Registered Users</h3>
+            <input type="text" id="search-input" placeholder="Search by name or email...">
 
-            <table id="student-table">
+            <table id="user-table">
                 <thead>
                     <tr>
                         <th data-sort-dir="asc" style="cursor:pointer">Name</th>
-                        <th data-sort-dir="asc" style="cursor:pointer">Student ID</th>
                         <th data-sort-dir="asc" style="cursor:pointer">Email</th>
+                        <th>Admin</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    </tbody>
+                <tbody id="user-table-body">
+                </tbody>
             </table>
         </section>
     </main>
