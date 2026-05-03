@@ -22,6 +22,7 @@ switch ($method) {
             $stmt->execute([$id]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($user) {
+                $user['id'] = (int)$user['id'];
                 sendResponse(true, $user);
             } else {
                 sendResponse(false, "User not found", 404);
@@ -35,7 +36,11 @@ switch ($method) {
             }
             $stmt = $pdo->prepare($query);
             $stmt->execute($params);
-            sendResponse(true, $stmt->fetchAll(PDO::FETCH_ASSOC));
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($users as &$u) { $u['id'] = (int)$u['id']; }
+            
+            sendResponse(true, $users);
         }
         break;
 
@@ -51,9 +56,10 @@ switch ($method) {
             $stmt->execute([$userId]);
             $user = $stmt->fetch();
 
-            if ($user && ($currentPw === $user['password'] || password_verify($currentPw, $user['password']))) {
+            if ($user && password_verify($currentPw, $user['password'])) {
+                $hashedNew = password_hash($newPw, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
-                $stmt->execute([$newPw, $userId]);
+                $stmt->execute([$hashedNew, $userId]);
                 sendResponse(true, "Password updated");
             } else {
                 sendResponse(false, "Invalid current password", 401);
@@ -72,8 +78,9 @@ switch ($method) {
             $stmt->execute([$email]);
             if ($stmt->fetch()) sendResponse(false, "Email exists", 409);
 
+            $hashedPw = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)");
-            if ($stmt->execute([$name, $email, $password, $is_admin])) {
+            if ($stmt->execute([$name, $email, $hashedPw, $is_admin])) {
                 sendResponse(true, "User created", 201);
             }
         }
