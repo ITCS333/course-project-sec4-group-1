@@ -66,7 +66,10 @@ async function handleAddWeek(event) {
     });
     const result = await res.json();
     if (result.success) {
-      await loadAndInitialize();
+      const refreshRes = await fetch('./api/index.php');
+      const refreshData = await refreshRes.json();
+      weeks = refreshData.data;
+      renderTable();
       weekForm.reset();
     }
   } catch (err) {
@@ -81,7 +84,7 @@ async function handleTableClick(event) {
   if (event.target.classList.contains("delete-btn")) {
     if (confirm("Delete this week?")) {
       await fetch(`./api/index.php?id=${id}`, { method: 'DELETE' });
-      await loadAndInitialize();
+      loadAndInitialize();
     }
   } else if (event.target.classList.contains("edit-btn")) {
     const week = weeks.find(w => w.id == id);
@@ -103,11 +106,12 @@ async function loadAndInitialize() {
       weeks = result.data;
       renderTable();
     }
+    
+    weekForm.addEventListener('submit', handleAddWeek);
+    weeksTableBody.addEventListener('click', handleTableClick);
   } catch (err) {
     console.error("Load error:", err);
   }
 }
 
-weekForm.addEventListener('submit', handleAddWeek);
-weeksTableBody.addEventListener('click', handleTableClick);
 loadAndInitialize();
