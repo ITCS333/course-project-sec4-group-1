@@ -1,73 +1,173 @@
 let users = [];
-const userTableBody = document.querySelector('#user-table-body');
-const addUserForm = document.querySelector('#add-user-form');
-const passwordForm = document.querySelector('#password-form');
-const searchInput = document.querySelector('#search-input');
+
+const userTableBody = document.querySelector("#user-table-body");
+const addUserForm = document.querySelector("#add-user-form");
+const passwordForm = document.querySelector("#password-form");
+const searchInput = document.querySelector("#search-input");
+const tableHeaders = document.querySelectorAll("#user-table thead th");
+
 function createUserRow(user) {
-  const tr = document.createElement('tr');
-  const name = document.createElement('td'); name.textContent = user.name; tr.appendChild(name);
-  const email = document.createElement('td'); email.textContent = user.email; tr.appendChild(email);
-  const admin = document.createElement('td'); admin.textContent = Number(user.is_admin) === 1 ? 'Yes' : 'No'; tr.appendChild(admin);
-  const actions = document.createElement('td');
-  const edit = document.createElement('button'); edit.textContent = 'Edit'; edit.className = 'edit-btn'; edit.dataset.id = user.id;
-  const del = document.createElement('button'); del.textContent = 'Delete'; del.className = 'delete-btn'; del.dataset.id = user.id;
-  actions.appendChild(edit); actions.appendChild(del); tr.appendChild(actions);
-  return tr;
+    const tr = document.createElement("tr");
+
+    const nameTd = document.createElement("td");
+    nameTd.textContent = user.name;
+    tr.appendChild(nameTd);
+
+    const emailTd = document.createElement("td");
+    emailTd.textContent = user.email;
+    tr.appendChild(emailTd);
+
+    const adminTd = document.createElement("td");
+    adminTd.textContent = user.is_admin == 1 ? "Yes" : "No";
+    tr.appendChild(adminTd);
+
+    const actionsTd = document.createElement("td");
+    
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.classList.add("edit-btn");
+    editBtn.dataset.id = user.id;
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.classList.add("delete-btn");
+    deleteBtn.dataset.id = user.id;
+
+    actionsTd.appendChild(editBtn);
+    actionsTd.appendChild(deleteBtn);
+    tr.appendChild(actionsTd);
+
+    return tr;
 }
-function renderTable(data = users) { userTableBody.innerHTML = ''; data.forEach(user => userTableBody.appendChild(createUserRow(user))); }
-async function handleChangePassword(event) {
-  event.preventDefault();
-  const current = document.getElementById('current-password').value;
-  const next = document.getElementById('new-password').value;
-  const confirm = document.getElementById('confirm-password').value;
-  if (next !== confirm) { alert('Passwords do not match'); return; }
-  if (next.length < 8) { alert('Password must be at least 8 characters'); return; }
-  await fetch('./api/index.php?action=change_password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:1,current_password:current,new_password:next})});
-  document.getElementById('current-password').value = '';
-  document.getElementById('new-password').value = '';
-  document.getElementById('confirm-password').value = '';
+
+function renderTable(userArray) {
+    userTableBody.innerHTML = "";
+    userArray.forEach(user => {
+        userTableBody.appendChild(createUserRow(user));
+    });
 }
+
+function handleChangePassword(event) {
+    event.preventDefault();
+
+    const currentPw = document.getElementById("current-password");
+    const newPw = document.getElementById("new-password");
+    const confirmPw = document.getElementById("confirm-password");
+
+    if (newPw.value !== confirmPw.value) {
+        alert("Error: Passwords do not match.");
+        return;
+    }
+
+    if (newPw.value.length < 8) {
+        alert("Error: Password must be at least 8 characters.");
+        return;
+    }
+
+    currentPw.value = "";
+    newPw.value = "";
+    confirmPw.value = "";
+}
+
 async function handleAddUser(event) {
-  event.preventDefault();
-  const name = document.getElementById('user-name').value.trim();
-  const email = document.getElementById('user-email').value.trim();
-  const password = document.getElementById('default-password').value;
-  const is_admin = Number(document.getElementById('is-admin') ? document.getElementById('is-admin').value : 0);
-  if (!name || !email || !password) { alert('All fields are required'); return; }
-  const res = await fetch('./api/index.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email,password,is_admin})});
-  const result = await res.json();
-  if (result.success) { users.push({id: result.data.id, name, email, is_admin}); renderTable(); addUserForm.reset(); }
+    event.preventDefault();
+
+    const name = document.getElementById("user-name").value.trim();
+    const email = document.getElementById("user-email").value.trim();
+    const password = document.getElementById("default-password").value.trim();
+    const isAdmin = document.getElementById("is-admin").value;
+
+    if (!name || !email || !password) {
+        alert("Error: Please fill out all required fields.");
+        return;
+    }
+
+    try {
+        const response = await fetch("api/index.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password, is_admin: isAdmin })
+        });
+        
+        if (response.ok) {
+            await loadUsersAndInitialize();
+            document.getElementById("user-name").value = "";
+            document.getElementById("user-email").value = "";
+            document.getElementById("default-password").value = "";
+        }
+    } catch (err) {
+        console.error(err);
+    }
 }
+
 async function handleTableClick(event) {
-  const btn = event.target;
-  const id = btn.dataset.id;
-  if (btn.classList.contains('delete-btn')) { await fetch('./api/index.php?id=' + id, {method:'DELETE'}); users = users.filter(u => String(u.id) !== String(id)); renderTable(); }
-  if (btn.classList.contains('edit-btn')) { const user = users.find(u => String(u.id) === String(id)); if (user) { document.getElementById('user-name').value = user.name; document.getElementById('user-email').value = user.email; } }
+    if (event.target.classList.contains("delete-btn")) {
+        const userId = event.target.dataset.id;
+        
+        if (confirm("Are you sure?")) {
+            const response = await fetch(`api/index.php?id=${userId}`, {
+                method: "DELETE"
+            });
+            if (response.ok) {
+                users = users.filter(u => u.id != userId);
+                renderTable(users);
+            }
+        }
+    }
 }
-function handleSearch(event) {
-  const term = event.target.value.toLowerCase();
-  renderTable(users.filter(u => u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term)));
+
+function handleSearch() {
+    const term = searchInput.value.toLowerCase();
+    const filtered = users.filter(u => 
+        u.name.toLowerCase().includes(term) || 
+        u.email.toLowerCase().includes(term)
+    );
+    renderTable(filtered);
 }
+
 function handleSort(event) {
-  const header = event.currentTarget;
-  const index = Array.from(header.parentElement.children).indexOf(header);
-  const key = index === 1 ? 'email' : 'name';
-  const dir = header.dataset.sortDir === 'asc' ? 'desc' : 'asc';
-  header.dataset.sortDir = dir;
-  users.sort((a,b) => dir === 'asc' ? String(a[key]).localeCompare(String(b[key])) : String(b[key]).localeCompare(String(a[key])));
-  renderTable();
+    const header = event.currentTarget;
+    const index = header.cellIndex;
+    let prop = index === 0 ? "name" : (index === 1 ? "email" : null);
+    
+    if (!prop) return;
+
+    const currentDir = header.dataset.sortDir || "desc";
+    const newDir = currentDir === "asc" ? "desc" : "asc";
+    header.dataset.sortDir = newDir;
+
+    users.sort((a, b) => {
+        return newDir === "asc" 
+            ? a[prop].localeCompare(b[prop]) 
+            : b[prop].localeCompare(a[prop]);
+    });
+
+    renderTable(users);
 }
+
 async function loadUsersAndInitialize() {
-  const res = await fetch('./api/index.php');
-  const result = await res.json();
-  if (result.success) { users = result.data; renderTable(); }
-  if (!loadUsersAndInitialize._listenersAttached) {
-    if (passwordForm) passwordForm.addEventListener('submit', handleChangePassword);
-    if (addUserForm) addUserForm.addEventListener('submit', handleAddUser);
-    if (userTableBody) userTableBody.addEventListener('click', handleTableClick);
-    if (searchInput) searchInput.addEventListener('input', handleSearch);
-    document.querySelectorAll('#user-table thead th').forEach(th => th.addEventListener('click', handleSort));
-    loadUsersAndInitialize._listenersAttached = true;
-  }
+    try {
+        const response = await fetch("api/index.php");
+        const result = await response.json();
+        
+        if (result.success) {
+            users = result.data;
+            renderTable(users);
+        }
+
+        if (!loadUsersAndInitialize._listenersAttached) {
+            passwordForm.addEventListener("submit", handleChangePassword);
+            addUserForm.addEventListener("submit", handleAddUser);
+            userTableBody.addEventListener("click", handleTableClick);
+            searchInput.addEventListener("input", handleSearch);
+            tableHeaders.forEach(th => th.addEventListener("click", handleSort));
+            
+            loadUsersAndInitialize._listenersAttached = true;
+        }
+    } catch (error) {
+        console.error(error);
+    }
 }
-if (typeof window !== 'undefined') loadUsersAndInitialize();
+
+loadUsersAndInitialize._listenersAttached = false;
+loadUsersAndInitialize();
