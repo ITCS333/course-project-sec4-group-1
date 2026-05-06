@@ -1,39 +1,20 @@
 <?php
-session_start();
-require_once __DIR__ . '/../../common/db.php';
-
-header("Content-Type: application/json");
-
-$method = $_SERVER['REQUEST_METHOD'];
-
-if ($method !== 'POST') {
-    echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
-    exit;
-}
-
-$input = json_decode(file_get_contents('php://input'), true);
-
-$email = $input['email'] ?? null;
-$password = $input['password'] ?? null;
-
-if (!$email) {
-    echo json_encode(['success' => false, 'message' => 'Email is required']);
-    exit;
-}
-
-if (!$password) {
-    echo json_encode(['success' => false, 'message' => 'Password is required']);
-    exit;
-}
-
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    echo json_encode(['success' => false, 'message' => 'Invalid email format']);
-    exit;
-}
-
-if (strlen($password) < 8) {
-    echo json_encode(['success' => false, 'message' => 'Password too short']);
-    exit;
+require_once __DIR__ . '/db.php';
+header('Content-Type: application/json; charset=utf-8');
+function respond($data, int $code = 200): void { http_response_code($code); echo json_encode($data); exit; }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') respond(['success'=>false,'message'=>'Method not allowed'], 405);
+$data = json_decode(file_get_contents('php://input'), true) ?: [];
+$email = trim((string)($data['email'] ?? ''));
+$password = (string)($data['password'] ?? '');
+if ($email === '' || $password === '') respond(['success'=>false,'message'=>'Missing email or password'], 400);
+$pdo = getDBConnection();
+$stmt = $pdo->prepare('SELECT id, name, email, password, is_admin FROM users WHERE email = ?');
+$stmt->execute([$email]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$user || !password_verify($password, $user['password'])) respond(['success'=>false,'message'=>'Invalid credentials'], 401);
+unset($user['password']);
+$user['is_admin'] = (int)$user['is_admin'];
+respond(['success'=>true,'user'=>$user]);
 }
 
 try {
